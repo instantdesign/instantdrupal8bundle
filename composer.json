@@ -1,5 +1,5 @@
 {
-    "name": "theodo/drupal8-bundle",
+    "name": "instantdesign/drupal8-bundle",
     "type": "symfony-bundle",
     "description": "Bridging Drupal 8 and Symfony2",
     "keywords": ["drupal", "drupal8"],
@@ -11,8 +11,7 @@
         }
     ],
     "require": {
-        "php": ">=5.3.10",
-        "drupal/drupal": "8.x"
+        "php": ">=5.3.10"
     },
     "minimum-stability": "dev",
     "autoload": {
