@@ -229,7 +229,7 @@ class DrupalWrapper implements DrupalWrapperInterface
 
         $this->getDrupalKernel();
         /** @var Renderer $renderer */
-        $renderer = \Drupal::service('renderer');
+        $renderer = $this->getDrupalKernel()->getContainer()->get('renderer');
 
         $node = Node::load($nodeId);
         $build = \Drupal::entityTypeManager()->getViewBuilder('node')->view($node, 'full');
@@ -241,7 +241,7 @@ class DrupalWrapper implements DrupalWrapperInterface
 
         $this->getDrupalKernel();
         /** @var Renderer $renderer */
-        $renderer = \Drupal::service('renderer');
+        $renderer = $this->getDrupalKernel()->getContainer()->get('renderer');
 
         $menu_tree = \Drupal::menuTree();
         $parameters = $menu_tree->getCurrentRouteMenuTreeParameters($menu_name);
@@ -255,9 +255,8 @@ class DrupalWrapper implements DrupalWrapperInterface
     public function getBlock($block_id){
 
         $this->getDrupalKernel();
-        /** @var Renderer $renderer */
 
-        $block_manager = \Drupal::service('plugin.manager.block');
+        $block_manager = $this->getDrupalKernel()->getContainer()->get('plugin.manager.block');
         $block_config = [];
         $block_plugin = $block_manager->createInstance($block_id, $block_config);
 
@@ -270,9 +269,9 @@ class DrupalWrapper implements DrupalWrapperInterface
 
         $this->getDrupalKernel();
         /** @var Renderer $renderer */
-        $renderer = \Drupal::service('renderer');
+        $renderer = $this->getDrupalKernel()->getContainer()->get('renderer');
 
-        $block_manager = \Drupal::service('plugin.manager.block');
+        $block_manager = $this->getDrupalKernel()->getContainer()->get('plugin.manager.block');
         $block_config = [];
         $block_plugin = $block_manager->createInstance($block_id, $block_config);
 
@@ -285,9 +284,9 @@ class DrupalWrapper implements DrupalWrapperInterface
 
         $this->getDrupalKernel();
 
-        $block_manager = \Drupal::service('plugin.manager.block');
+        $block_manager = $this->getDrupalKernel()->getContainer()->get('plugin.manager.block');
 
-        $contextRepository = \Drupal::service('context.repository');
+        $contextRepository = $this->getDrupalKernel()->getContainer()->get('context.repository');
         $definitions = $block_manager->getDefinitionsForContexts($contextRepository->getAvailableContexts());
 
         return $definitions;
@@ -298,7 +297,7 @@ class DrupalWrapper implements DrupalWrapperInterface
         $this->getDrupalKernel();
 
         /** @var ThemeManager $themeManager */
-        $themeManager = \Drupal::service('theme.manager');
+        $themeManager = $this->getDrupalKernel()->getContainer()->get('theme.manager');
 
 
         $theme = $themeManager->getActiveTheme();
@@ -329,6 +328,16 @@ class DrupalWrapper implements DrupalWrapperInterface
         $bareRenderer = $this->getDrupalKernel()->getContainer()->get('bare_html_page_renderer');
 
         return $bareRenderer->renderBarePage( $content, $title, $page_theme_property, $page_additions);
+
+    }
+
+    public function setLanguage($langcode)
+    {
+        $this->getDrupalKernel();
+
+        $configFactory = $this->getDrupalKernel()->getContainer()->get('config.factory');
+
+        $configFactory->getEditable('system.site')->set('default_langcode', $langcode)->save();
 
     }
 
