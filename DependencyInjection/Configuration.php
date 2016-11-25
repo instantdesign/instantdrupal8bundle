@@ -25,7 +25,7 @@ class Configuration implements ConfigurationInterface
             ->addDefaultsIfNotSet()
             ->children()
                 ->scalarNode('drupal_dir')
-                ->defaultValue('%kernel.root_dir%/../vendor/drupal/drupal')
+                ->defaultValue('%kernel.root_dir%/web')
                 ->info('The root directory of your drupal application')->end()
             ->end();
 
