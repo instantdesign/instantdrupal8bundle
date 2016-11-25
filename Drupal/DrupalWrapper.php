@@ -216,13 +216,16 @@ class DrupalWrapper implements DrupalWrapperInterface
      * @param $nodeId
      * @return mixed
      */
-    public function getNode($nodeId)
+    public function getNode($nodeId, $langcode = "de")
     {
         $this->getDrupalKernel();
 
         $node = Node::load($nodeId);
 
-        return $node;
+        $render_controller = \Drupal::entityManager()->getViewBuilder($node->getEntityTypeId());
+
+        return $render_controller->view($node, "full", $langcode);
+
     }
 
     public function renderNode($nodeId) {
@@ -256,6 +259,7 @@ class DrupalWrapper implements DrupalWrapperInterface
 
         $this->getDrupalKernel();
 
+
         $block_manager = $this->getDrupalKernel()->getContainer()->get('plugin.manager.block');
         $block_config = [];
         $block_plugin = $block_manager->createInstance($block_id, $block_config);
@@ -273,7 +277,9 @@ class DrupalWrapper implements DrupalWrapperInterface
 
         $block_manager = $this->getDrupalKernel()->getContainer()->get('plugin.manager.block');
         $block_config = [];
+
         $block_plugin = $block_manager->createInstance($block_id, $block_config);
+
 
         $block_build = $block_plugin->build();
 
@@ -340,5 +346,6 @@ class DrupalWrapper implements DrupalWrapperInterface
         $configFactory->getEditable('system.site')->set('default_langcode', $langcode)->save();
 
     }
+
 
 }
