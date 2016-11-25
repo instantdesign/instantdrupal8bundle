@@ -2,6 +2,12 @@
 
 namespace Theodo\Bundle\Drupal8Bundle\Drupal;
 
+use Drupal\bootstrap\Theme;
+use Drupal\Core\CoreServiceProvider;
+use Drupal\Core\Render\Renderer;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Core\Theme\ThemeManager;
+use Drupal\node\Entity\Node;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -96,39 +102,38 @@ class DrupalWrapper implements DrupalWrapperInterface
     }
 
     /**
+     * @param bool $isLegacy
      * @return DrupalKernel
      */
-    private function bootDrupalKernel()
+    private function bootDrupalKernel($isLegacy = true)
     {
         $currentDir = getcwd();
         chdir($this->drupalDir);
 
-        require_once $this->drupalDir . '/core/includes/bootstrap.inc';
-
-        // Initialize the environment, load settings.php, and activate a PSR-0 class
-        // autoloader with required namespaces registered.
-        \drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);
-
-
-        $drupalKernel = new DrupalKernel('prod', drupal_classloader());
-        $drupalKernel->boot();
+        $autoloader = require_once $this->drupalDir . '/autoload.php';
+        $request = Request::createFromGlobals();
+        /** @var DrupalKernel $kernel */
+        $kernel = DrupalKernel::createFromRequest($request, $autoloader, 'prod');
 
 
-
-        \drupal_bootstrap(DRUPAL_BOOTSTRAP_CODE);
+        if ($isLegacy) {
+            $kernel->prepareLegacyRequest($request);
+            $kernel->boot();
+        }
 
         chdir($currentDir);
 
-        return $drupalKernel;
+        return $kernel;
     }
 
     /**
-     * @return DrupalKernel|string
+     * @param bool $isLegacy
+     * @return DrupalKernel
      */
-    public function getDrupalKernel()
+    public function getDrupalKernel($isLegacy = true)
     {
         if (null === $this->drupalKernel) {
-            $this->drupalKernel = $this->bootDrupalKernel();
+            $this->drupalKernel = $this->bootDrupalKernel($isLegacy);
         }
 
         return $this->drupalKernel;
@@ -153,10 +158,10 @@ class DrupalWrapper implements DrupalWrapperInterface
         $currentDir = getcwd();
         chdir($this->drupalDir);
 
-        $drupalKernel = $this->getDrupalKernel();
+        $isLegacy = false;
+        $drupalKernel = $this->getDrupalKernel($isLegacy);
 
         $response = $drupalKernel->handle($request);
-        $response = $response->prepare($request);
         $drupalKernel->terminate($request, $response);
 
         // if we are still here, there were no exit() used in Drupal code, we can unregister our shutdown_function
@@ -168,7 +173,6 @@ class DrupalWrapper implements DrupalWrapperInterface
 
         chdir($currentDir);
 
-        ob_end_clean();
 
         return $response;
     }
@@ -214,27 +218,118 @@ class DrupalWrapper implements DrupalWrapperInterface
      */
     public function getNode($nodeId)
     {
-        $drupalKernel = $this->getDrupalKernel();
+        $this->getDrupalKernel();
 
-        $entityConverter = $drupalKernel->getContainer()
-            ->get('paramconverter_manager')
-            ->getConverter('paramconverter.entity');
-        $node = $entityConverter->convert(1, array('type' => 'entity:node', ''));
+        $node = Node::load($nodeId);
 
         return $node;
     }
 
-    /**
-     * @param $title string
-     * @return mixed
-     */
-    public function getNodeByTitle($title)
-    {
-        $request = $this->getRequest();
-        $request->attributes->set('_system_path', 'node/'.$title);
+    public function renderNode($nodeId) {
 
-        $this->getCurrentUser();
+        $this->getDrupalKernel();
+        /** @var Renderer $renderer */
+        $renderer = \Drupal::service('renderer');
 
-        return entity_load_multiple_by_properties('node', array('title' => 'Salut monde'))[1];
+        $node = Node::load($nodeId);
+        $build = \Drupal::entityTypeManager()->getViewBuilder('node')->view($node, 'full');
+
+        return $renderer->renderRoot($build);
     }
+
+    public function getMenu($menu_name) {
+
+        $this->getDrupalKernel();
+        /** @var Renderer $renderer */
+        $renderer = \Drupal::service('renderer');
+
+        $menu_tree = \Drupal::menuTree();
+        $parameters = $menu_tree->getCurrentRouteMenuTreeParameters($menu_name);
+
+        $tree = $menu_tree->load($menu_name, $parameters);
+        $menu = $menu_tree->build($tree);
+
+        return $renderer->renderRoot($menu);
+    }
+
+    public function getBlock($block_id){
+
+        $this->getDrupalKernel();
+        /** @var Renderer $renderer */
+
+        $block_manager = \Drupal::service('plugin.manager.block');
+        $block_config = [];
+        $block_plugin = $block_manager->createInstance($block_id, $block_config);
+
+        $block_build = $block_plugin->build();
+
+        return $block_build;
+    }
+
+    public function renderBlock($block_id){
+
+        $this->getDrupalKernel();
+        /** @var Renderer $renderer */
+        $renderer = \Drupal::service('renderer');
+
+        $block_manager = \Drupal::service('plugin.manager.block');
+        $block_config = [];
+        $block_plugin = $block_manager->createInstance($block_id, $block_config);
+
+        $block_build = $block_plugin->build();
+
+        return $renderer->renderRoot($block_build);
+    }
+
+    public function getBlockList() {
+
+        $this->getDrupalKernel();
+
+        $block_manager = \Drupal::service('plugin.manager.block');
+
+        $contextRepository = \Drupal::service('context.repository');
+        $definitions = $block_manager->getDefinitionsForContexts($contextRepository->getAvailableContexts());
+
+        return $definitions;
+    }
+
+    public function getTheme() {
+
+        $this->getDrupalKernel();
+
+        /** @var ThemeManager $themeManager */
+        $themeManager = \Drupal::service('theme.manager');
+
+
+        $theme = $themeManager->getActiveTheme();
+
+        $themeName = $theme->getName();
+        $theme_settings = \Drupal::config($themeName . '.settings')->get();
+
+        $themeArray["theme"] = $theme;
+        $themeArray["settings"] = $theme_settings;
+        $themeArray["settings"]["fluid_container"] = true;
+
+        return $themeArray;
+
+    }
+
+    public function preprocess_page ($variables) {
+
+        $this->getDrupalKernel();
+
+        template_preprocess_page($variables);
+
+        return $variables;
+
+    }
+
+    public function createResponse(array $content, $title, $page_theme_property, array $page_additions = []) {
+
+        $bareRenderer = $this->getDrupalKernel()->getContainer()->get('bare_html_page_renderer');
+
+        return $bareRenderer->renderBarePage( $content, $title, $page_theme_property, $page_additions);
+
+    }
+
 }
