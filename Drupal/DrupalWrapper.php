@@ -8,6 +8,7 @@ use Drupal\Core\Render\Renderer;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Theme\ThemeManager;
 use Drupal\node\Entity\Node;
+use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,6 +53,8 @@ class DrupalWrapper implements DrupalWrapperInterface
      * {@inheritdoc}
      */
     private $response;
+
+    private $request;
 
     /**
      * @param $drupalDir
@@ -111,7 +114,13 @@ class DrupalWrapper implements DrupalWrapperInterface
         chdir($this->drupalDir);
 
         $autoloader = require_once $this->drupalDir . '/autoload.php';
-        $request = Request::createFromGlobals();
+
+        $request = $this->request;
+
+        if (!$request) {
+            $request = Request::createFromGlobals();
+        }
+
         /** @var DrupalKernel $kernel */
         $kernel = DrupalKernel::createFromRequest($request, $autoloader, 'prod');
 
@@ -124,6 +133,11 @@ class DrupalWrapper implements DrupalWrapperInterface
         chdir($currentDir);
 
         return $kernel;
+    }
+
+    public function setRequest($request){
+
+        $this->request = $request;
     }
 
     /**
