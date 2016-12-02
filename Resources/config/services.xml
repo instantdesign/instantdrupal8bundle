@@ -7,7 +7,7 @@
     <parameters>
         <parameter key="theodo_drupal8.drupal_wrapper.class">Theodo\Bundle\Drupal8Bundle\Drupal\DrupalWrapper</parameter>
         <parameter key="theodo_drupal8.router_listener.class">Theodo\Bundle\Drupal8Bundle\EventListener\DrupalRouterListener</parameter>
-        <parameter key="theodo_drupal8.drupal_dir">/var/www/web<</parameter>
+        <parameter key="theodo_drupal8.drupal_dir">/var/www/web</parameter>
     </parameters>
 
     <services>
